@@ -22,20 +22,17 @@ class ClientsController extends Controller
     public function index(Request $request)
     {
         $user = $this->getUser();
-        $condition = [];
-        $partner_with_clients = [];
-        if ($user->haRole('client')) {
-            $id = $this->getClient()->id;
-            $condition = ['id' => $id];
-        }
+        if ($user->haRole('super')) {
+            if (isset($request->option) && $request->option === 'all') {
+                $clients = Client::orderBy('name')->get();
 
-        if (isset($request->option) && $request->option === 'all') {
-            $clients = Client::where($condition)->orderBy('name')->get();
+            } else {
 
+                $clients = Client::with('users')->orderBy('name')->paginate($request->limit);
+                return response()->json(compact('clients'), 200);
+            }
         } else {
-
-            $clients = Client::with('users')->where($condition)->orderBy('name')->paginate($request->limit);
-            return response()->json(compact('clients'), 200);
+            $clients = [$this->getClient()];
         }
         return response()->json(compact('clients'), 200);
     }
@@ -81,7 +78,19 @@ class ClientsController extends Controller
         }
         return response()->json(['message' => 'Company already exists'], 401);
     }
+    public function registerUser(Request $request)
+    {
+        $client = $this->getClient();
+        $request->password = $request->email;
+        $user_obj = new User();
+        $user = $user_obj->createUser($request);
+        // sync user to client
+        $client->users()->syncWithoutDetaching($user->id);
+        $role = Role::where('name', 'client')->first();
+        $user->roles()->sync($role->id); // role id 3 is client
 
+        return response()->json('success', 200);
+    }
 
     public function registerClientUser(Request $request)
     {

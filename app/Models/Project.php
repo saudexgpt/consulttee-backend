@@ -52,20 +52,21 @@ class Project extends Model
 
     public function watchProjectProgress(Project $project)
     {
-        // $project_id  = $project->id;
-        // $uploaded_documents = Upload::where(['project_id' => $project_id, 'is_exception' => 0])->where('link', '!=', NULL)->count();
-        // $expected_documents = Upload::where(['project_id' => $project_id])->count();
-        // $answered_questions = Answer::where(['project_id' => $project_id, 'is_exception' => 0])->where('is_submitted', 1)->count();
-        // $all_questions = Answer::where(['project_id' => $project_id])->count();
+        $project_id = $project->id;
+        $uploaded_documents = GapAssessmentEvidence::groupBy('answer_id')->where(['project_id' => $project_id])->where('link', '!=', NULL)->count();
 
-        // $total_task = $expected_documents + $all_questions;
-        // $total_response = $uploaded_documents + $answered_questions;
-        // $percentage_progress = 0;
-        // if ($total_task > 0) {
-        //     $percentage_progress = $total_response / $total_task * 100;
-        // }
+        $all_questions = Answer::where(['project_id' => $project_id])->count();
+        $expected_documents = $all_questions;
+        $answered_questions = Answer::where(['project_id' => $project_id, 'is_exception' => 0])->where('is_submitted', 1)->count();
 
-        // $project->progress = $percentage_progress;
-        // $project->save();
+        $total_task = $expected_documents + $all_questions;
+        $total_response = $uploaded_documents + $answered_questions;
+        $percentage_progress = 0;
+        if ($total_task > 0) {
+            $percentage_progress = $total_response / $total_task * 100;
+        }
+
+        $project->progress = $percentage_progress;
+        $project->save();
     }
 }

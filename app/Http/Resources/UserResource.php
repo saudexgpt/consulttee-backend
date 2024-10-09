@@ -33,7 +33,7 @@ class UserResource extends JsonResource
         if ($this->haRole('client')) {
             $client_id = $this->client_id;
             $client = Client::find($client_id);
-            $partner_id = $client->partner_id;
+            // $partner_id = $client->partner_id;
 
             $projects = $this->projects()
                 ->with('availableModule')
@@ -44,7 +44,7 @@ class UserResource extends JsonResource
 
                 $modules[] = $project->availableModule->slug;
             }
-            $partner = Partner::find($partner_id);
+            // $partner = Partner::find($partner_id);
         }
         if ($this->haRole('partner')) {
             $partner_id = $this->partner_id;

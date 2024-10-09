@@ -75,8 +75,8 @@ class AnswersController extends Controller
         $evidence = "Evidence: ### $evid ###";
         $instruction = "
 Based on the provided information, generate:
-1. A score from 1 to 10 reflecting the accuracy and completeness of the client's answer and evidence.
-2. An assessment grade which is either Conformity, Opportunity for Improvement or Non-Conformity for the assigned score
+1. A score from 1 to 10 reflecting the accuracy and completeness of the response and evidence.
+2. An assessment grade which is either Conformity or Non-Conformity for the assigned score. For a Conformity, the score must be above 7
 3. A brief justification for the assigned score.
 4. A good recommendation based on the assigned score.
 
@@ -116,45 +116,53 @@ recommendation: <good recommendation in 20 words>";
         $answer_ids = json_decode(json_encode($request->answer_ids));
         Answer::with('question', 'evidences')->whereIn('id', $answer_ids)->chunkById(10, function ($answers) {
             foreach ($answers as $answer) {
-                $ans = $answer->yes_or_no;
-                if ($ans != NULL) {
+                if ($value === 1) {
+                    $ans = $answer->yes_or_no;
+                    if ($ans != NULL) {
 
-                    $details = $answer->open_ended_answer;
-                    $quest = $answer->question->question;
+                        $details = $answer->open_ended_answer;
+                        $quest = $answer->question->question;
 
-                    $evidences = $answer->evidences;
-                    $evidence_links_array = [];
-                    foreach ($evidences as $evidence) {
-                        $evidence_links_array[] = env('APP_URL') . '/storage/' . $evidence->link;
+                        $evidences = $answer->evidences;
+                        $evidence_links_array = [];
+                        foreach ($evidences as $evidence) {
+                            $evidence_links_array[] = env('APP_URL') . '/storage/' . $evidence->link;
+                        }
+                        $evidence_link = implode(',', $evidence_links_array);
+
+                        $ai_response = $this->analyzeWithOpenAI($quest, $ans, $details, $evidence_link);
+
+                        $answer->score = $ai_response->score;
+                        $answer->findings = $ai_response->justification;
+                        $answer->consultant_grade = $ai_response->grade;
+                        $answer->recommendations = $ai_response->recommendation;
+                        $answer->is_submitted = 1;
+                        $answer->save();
                     }
-                    $evidence_link = implode(',', $evidence_links_array);
-
-                    $ai_response = $this->analyzeWithOpenAI($quest, $ans, $details, $evidence_link);
-
-                    $answer->score = $ai_response->score;
-                    $answer->findings = $ai_response->justification;
-                    $answer->consultant_grade = $ai_response->grade;
-                    $answer->recommendations = $ai_response->recommendation;
-                    $answer->is_submitted = 1;
+                } else {
+                    $answer->is_submitted = 0;
                     $answer->save();
                 }
+
             }
         }, $column = 'id');
         //send notification
-        $answer = Answer::with('clause', 'client.users')->find($answer_ids[0]);
+        $answer = Answer::with('clause', 'standard', 'client.users')->find($answer_ids[0]);
         $clause = $answer->clause;
+        $standard = $answer->standard;
         $name = $user->name;
         $users = $answer->client->users;
         if ($value === 1) {
 
-            $title = "Answers Submitted";
+            $title = "Response Submitted and Analyzed";
             //log this event
-            $description = "$name submitted response on gap assessment for clause: $clause->name";
+            $description = "Response on gap assessment for $standard->name ($clause->name), submitted by $name, is analyzed for compliance.";
+
         } else {
 
             $title = "Response modification enabled";
             //log this event
-            $description = "$name enabled response modification on gap assessment for clause: $clause->name";
+            $description = "$name enabled response modification on gap assessment for $standard->name,  $clause->name";
         }
         $this->auditTrailEvent($title, $description, $users);
     }
@@ -186,11 +194,12 @@ recommendation: <good recommendation in 20 words>";
         $answer->remark = $remark;
         $answer->save();
 
-        $clause = Clause::find($answer->clause_id);
+        $clause = Clause::with('standard')->find($answer->clause_id);
+        $standard = $clause->standard;
         $client = Client::with('users')->find($answer->client_id);
         $title = "Remark on gap assessment";
         //log this event
-        $description = "$user->name made a remark on gap assessment for clause: $clause->name";
+        $description = "$user->name made a remark on gap assessment for $standard->name, $clause->name";
         $this->auditTrailEvent($title, $description, $client->users);
     }
     public function uploadGapAssessmentEvidence(Request $request)
@@ -199,6 +208,8 @@ recommendation: <good recommendation in 20 words>";
         $gap_assessment_evidence = new GapAssessmentEvidence();
         $title = $request->title;
         $answer_id = $request->answer_id;
+        $answer = Answer::find($answer_id);
+        $project_id = $answer->project_id;
         $client_id = $client->id;
         $folder_key = $client_id;
         if ($request->file('file_uploaded') != null && $request->file('file_uploaded')->isValid()) {
@@ -209,6 +220,7 @@ recommendation: <good recommendation in 20 words>";
             $link = $request->file('file_uploaded')->storeAs('clients/' . $folder_key . '/gap-assessment-evidence', $name, 'public');
 
             $gap_assessment_evidence->client_id = $client_id;
+            $gap_assessment_evidence->project_id = $project_id;
             $gap_assessment_evidence->answer_id = $answer_id;
             $gap_assessment_evidence->link = $link;
             $gap_assessment_evidence->evidence_title = $title;

@@ -38,16 +38,8 @@ class UsersController extends Controller
     }
     public function fetchStaff()
     {
-        $user = $this->getUser();
-        $staff = [];
-        if ($user->haRole('partner')) {
-            $partner = $this->getPartner();
-            $staff = $partner->users()->with('roles', 'permissions')->get();
-        }
-        if ($user->isSuperAdmin()) {
-
-            $staff = User::with('roles', 'permissions')->where('role', 'staff')->get();
-        }
+        $client = $this->getClient();
+        $staff = $client->users;
         return response()->json(compact('staff'), 200);
     }
     public function userNotifications(Request $request)

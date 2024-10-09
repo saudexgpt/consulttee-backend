@@ -221,7 +221,9 @@ Route::group(['middleware' => 'auth:sanctum'], function () {
         Route::get('/', [ClientsController::class, 'index']);
         Route::get('fetch-user-clients', [ClientsController::class, 'fetchUserClients']);
         Route::post('register', [ClientsController::class, 'store']);
+        Route::post('register-user', [ClientsController::class, 'registerUser']);
         Route::post('register-client-user', [ClientsController::class, 'registerClientUser']);
+
 
         Route::post('update', [ClientsController::class, 'update']);
         Route::put('update-client-user/{user}', [ClientsController::class, 'updateClientUser']);

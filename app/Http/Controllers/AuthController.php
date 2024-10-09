@@ -128,7 +128,7 @@ class AuthController extends Controller
      * @param  [string] password
      * @param  [boolean] remember_me
      */
-    public function login(Request $request)
+    public function loginNo2FA(Request $request)
     {
         $this->username = $this->findUsername();
 
@@ -154,7 +154,7 @@ class AuthController extends Controller
         // }
         return $this->generateAuthorizationKey($user);
     }
-    public function login2FA(Request $request)
+    public function login(Request $request)
     {
         $this->username = $this->findUsername();
 
@@ -422,8 +422,8 @@ class AuthController extends Controller
     private function setupTheme($user)
     {
         $logo = 'partner-logos/default-logo.png';
-        $navbar_bg = 'rgb(11, 23, 61)';
-        $sidebar_bg = 'rgb(210, 162, 4)';
+        $navbar_bg = 'rgb(37, 64, 216)';
+        $sidebar_bg = 'rgb(0, 0, 0)';
         if ($user->hasRole('client')) {
             $client_id = $user->client_id;
             $client = Client::find($client_id);
@@ -433,15 +433,15 @@ class AuthController extends Controller
                 $sidebar_bg = $client->sidebar_bg;
             }
         }
-        if ($user->hasRole('partner')) {
-            $partner_id = $user->partner_id;
-            $partner = Partner::find($partner_id);
-            if ($partner) {
-                $logo = $partner->logo;
-                $navbar_bg = $partner->navbar_bg;
-                $sidebar_bg = $partner->sidebar_bg;
-            }
-        }
+        // if ($user->hasRole('partner')) {
+        //     $partner_id = $user->partner_id;
+        //     $partner = Partner::find($partner_id);
+        //     if ($partner) {
+        //         $logo = $partner->logo;
+        //         $navbar_bg = $partner->navbar_bg;
+        //         $sidebar_bg = $partner->sidebar_bg;
+        //     }
+        // }
         $user->logo = $logo;
         $user->navbar_bg = $navbar_bg;
         $user->sidebar_bg = $sidebar_bg;

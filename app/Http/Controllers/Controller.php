@@ -122,7 +122,7 @@ class Controller extends BaseController
 
             $client_id = $user->client_id;
         }
-        if ($user->haRole('client') || $user->haRole('admin') || $user->haRole('super')) {
+        if ($user->haRole('client')) {
             $this->myProjects = $user->projects()
                 ->with('client', 'availableModule', 'standard')
                 ->where(['client_id' => $client_id, 'year' => $this->getYear()])
@@ -146,9 +146,9 @@ class Controller extends BaseController
     public function setClient()
     {
         $user = $this->getUser();
-        // $client_user = DB::table('client_user')->where('user_id', $user->id)->first();
-        // $client_id = $client_user->client_id;
-        $this->client = Client::find($user->client_id);
+        $client_user = DB::table('client_user')->where('user_id', $user->id)->first();
+        $client_id = $client_user->client_id;
+        $this->client = Client::with('users')->find($client_id);
     }
 
     public function getClient()

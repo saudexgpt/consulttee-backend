@@ -19,7 +19,7 @@ class ProjectsController extends Controller
 {
     public function fetchClientActivatedProjects(Request $request, Client $client)
     {
-        $partner_id = $client->partner_id;
+        // $partner_id = $client->partner_id;
         $activated_modules = AvailableModule::with('standards')
             ->get();
         $projects = $this->getMyProjects($client->id);

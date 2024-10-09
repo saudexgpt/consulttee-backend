@@ -6,6 +6,7 @@ use App\Models\Answer;
 use App\Models\AssetType;
 use App\Models\BusinessImpactAnalysis;
 use App\Models\Client;
+use App\Models\GapAssessmentEvidence;
 use App\Models\RiskMatrix;
 use App\Models\RiskRegister;
 use App\Models\Upload;
@@ -31,9 +32,9 @@ class ReportsController extends Controller
 
         $in_progress = $all_projects_count - $completed_projects;
         $all_projects = $my_projects;
-        // foreach ($all_projects as $project) {
-        //     $project->watchProjectProgress($project);
-        // }
+        foreach ($all_projects as $project) {
+            $project->watchProjectProgress($project);
+        }
         return response()->json(compact('client', 'all_projects', 'all_projects_count', 'completed_projects', 'in_progress'), 200);
     }
     public function clientDataAnalysisDashbord(Request $request)
@@ -53,9 +54,9 @@ class ReportsController extends Controller
 
         $in_progress = $all_projects_count - $completed_projects;
         $all_projects = $my_projects;
-        // foreach ($all_projects as $project) {
-        //     $project->watchProjectProgress($project);
-        // }
+        foreach ($all_projects as $project) {
+            $project->watchProjectProgress($project);
+        }
         return response()->json(compact('client', 'all_projects', 'all_projects_count', 'completed_projects', 'in_progress'), 200);
     }
 
@@ -74,19 +75,20 @@ class ReportsController extends Controller
             $projectIds = $this->getMyProjects($client_id)->pluck('id');
             $condition = ['client_id' => $client_id];
 
-            $uploaded_documents = Upload::where($condition)->whereIn('project_id', $expectedDocumentProjectIds)
+            $uploaded_documents = GapAssessmentEvidence::where($condition)->whereIn('project_id', $expectedDocumentProjectIds)
                 // ->where('is_exception', 0)
                 ->where('link', '!=', NULL)
                 ->count();
-
-            $expected_documents = Upload::where($condition)->whereIn('project_id', $expectedDocumentProjectIds)->count();
+            $expected_documents = 0;
+            // $expected_documents = Upload::where($condition)->whereIn('project_id', $expectedDocumentProjectIds)->count();
             $answered_questions = Answer::where($condition)
                 ->whereIn('project_id', $projectIds)
                 ->where('is_exception', 0)
-                ->where(function ($q) {
-                    $q->where('yes_or_no', '!=', NULL);
-                    $q->orWhere('open_ended_answer', '!=', NULL);
-                })
+                ->where('is_submitted', 1)
+                // ->where(function ($q) {
+                //     $q->where('yes_or_no', '!=', NULL);
+                //     $q->orWhere('open_ended_answer', '!=', NULL);
+                // })
                 // ->where('status', 'Closed')
                 ->count();
             $all_questions = Answer::where($condition)->whereIn('project_id', $projectIds)->count();
@@ -99,20 +101,21 @@ class ReportsController extends Controller
             $project_progress = $project->progress;
             $expected_documents = 0;
             $condition = ['project_id' => $project_id, 'client_id' => $client_id];
-            $uploaded_documents = Upload::where($condition)
+            $uploaded_documents = GapAssessmentEvidence::where($condition)
                 // ->where('is_exception', 0)
                 ->where('link', '!=', NULL)
                 ->count();
-            if ($project->allow_document_uploads == 1) {
-                $expected_documents = Upload::where($condition)->count();
-            }
+            // if ($project->allow_document_uploads == 1) {
+            //     $expected_documents = Upload::where($condition)->count();
+            // }
 
             $answered_questions = Answer::where($condition)
                 ->where('is_exception', 0)
-                ->where(function ($q) {
-                    $q->where('yes_or_no', '!=', NULL);
-                    $q->orWhere('open_ended_answer', '!=', NULL);
-                })
+                ->where('is_submitted', 1)
+                // ->where(function ($q) {
+                //     $q->where('yes_or_no', '!=', NULL);
+                //     $q->orWhere('open_ended_answer', '!=', NULL);
+                // })
                 // ->where('status', 'Closed')
                 ->count();
             $all_questions = Answer::where($condition)->count();
@@ -127,12 +130,24 @@ class ReportsController extends Controller
     {
         $client_id = $request->client_id;
         $project_id = $request->project_id;
-        $reports = Answer::join('clauses', 'clauses.id', '=', 'answers.clause_id')
-            ->where(['client_id' => $client_id, 'project_id' => $project_id])
-            // ->where('is_submitted', 1)
-            ->orderBy('clauses.sort_by')
-            ->select(\DB::raw('COUNT(CASE WHEN consultant_grade = "Conformity" THEN answers.id END ) as conformity'), \DB::raw('COUNT(CASE WHEN consultant_grade = "Non-Conformity" THEN answers.id END ) as non_conformity'), \DB::raw('COUNT(CASE WHEN consultant_grade = "Not Applicable" THEN answers.id END ) as not_applicable'), \DB::raw('COUNT(CASE WHEN consultant_grade = "Opportunity for Improvement" THEN answers.id END ) as open_for_imporvement'))
-            ->first();
+        if ($project_id == 'all') {
+            $projectIds = $this->getMyProjects($client_id)->pluck('id');
+            $reports = Answer::join('clauses', 'clauses.id', '=', 'answers.clause_id')
+                ->where(['client_id' => $client_id])
+                ->whereIn('project_id', $projectIds)
+                // ->where('is_submitted', 1)
+                ->orderBy('clauses.sort_by')
+                ->select(\DB::raw('COUNT(CASE WHEN consultant_grade = "Conformity" THEN answers.id END ) as conformity'), \DB::raw('COUNT(CASE WHEN consultant_grade = "Non-Conformity" THEN answers.id END ) as non_conformity'), \DB::raw('COUNT(CASE WHEN consultant_grade = "Not Applicable" THEN answers.id END ) as not_applicable'), \DB::raw('COUNT(CASE WHEN consultant_grade = "Opportunity for Improvement" THEN answers.id END ) as open_for_imporvement'))
+                ->first();
+        } else {
+
+            $reports = Answer::join('clauses', 'clauses.id', '=', 'answers.clause_id')
+                ->where(['client_id' => $client_id, 'project_id' => $project_id])
+                // ->where('is_submitted', 1)
+                ->orderBy('clauses.sort_by')
+                ->select(\DB::raw('COUNT(CASE WHEN consultant_grade = "Conformity" THEN answers.id END ) as conformity'), \DB::raw('COUNT(CASE WHEN consultant_grade = "Non-Conformity" THEN answers.id END ) as non_conformity'), \DB::raw('COUNT(CASE WHEN consultant_grade = "Not Applicable" THEN answers.id END ) as not_applicable'), \DB::raw('COUNT(CASE WHEN consultant_grade = "Opportunity for Improvement" THEN answers.id END ) as open_for_imporvement'))
+                ->first();
+        }
         return response()->json(compact('reports'), 200);
     }
     public function clientProjectManagementClauseReport(Request $request)
