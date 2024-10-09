@@ -98,7 +98,6 @@ class ClientsController extends Controller
         $request->name = $request->admin_first_name . ' ' . $request->admin_last_name;
         $request->email = $request->admin_email;
         $request->phone = $request->admin_phone;
-        $request->role = 'client';
         $user_obj = new User();
         $user = $user_obj->createUser($request);
         // sync user to client
