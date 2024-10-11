@@ -100,6 +100,7 @@ class ClientsController extends Controller
         $request->phone = $request->admin_phone;
         $user_obj = new User();
         $user = $user_obj->createUser($request);
+        $this->sendLoginCredentials($user);
         // sync user to client
         $client->users()->syncWithoutDetaching($user->id);
         $role = Role::where('name', 'client')->first();
@@ -119,9 +120,9 @@ class ClientsController extends Controller
         $user->password = $password;
         $user->save();
         //email will be sent later containing login credentials
-        // SendQueuedConfirmationEmailJob::dispatch($user, $password);
-        Mail::to($user)->send(new ConfirmNewRegistration($user, $password));
-        // \Illuminate\Support\Facades\Artisan::call('queue:work --queue=high,default');
+        SendQueuedConfirmationEmailJob::dispatch($user, $password);
+        // Mail::to($user)->send(new ConfirmNewRegistration($user, $password));
+        \Illuminate\Support\Facades\Artisan::call('queue:work --queue=high,default');
         return response()->json([], 204);
     }
     /**
