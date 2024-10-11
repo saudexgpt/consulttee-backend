@@ -103,6 +103,7 @@ class User extends Authenticatable
         $user->phone = $data->phone;
         $user->password = $data->password;
         $user->role = $data->role;
+        $user->password_status = ($data->role == 'client') ? 'default' : 'custom';
         $user->designation = $data->designation;
         $user->login_as = $data->role;
         $user->confirm_hash = hash('sha256', time() . $data->email);

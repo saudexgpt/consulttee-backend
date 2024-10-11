@@ -523,6 +523,7 @@ class ReportsController extends Controller
         $assessment_answers = Answer::with(['client', 'clause', 'standard', 'question'])
             ->join('clauses', 'clauses.id', '=', 'answers.clause_id')
             ->where(['project_id' => $project_id])
+            ->where('is_submitted', 1)
             ->orderBy('clauses.sort_by')
             ->select('answers.*')
             ->get();

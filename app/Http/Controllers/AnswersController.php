@@ -76,7 +76,7 @@ class AnswersController extends Controller
         $instruction = "
 Based on the provided information, generate:
 1. A score from 1 to 10 reflecting the accuracy and completeness of the response and evidence.
-2. An assessment grade which is either Conformity or Non-Conformity for the assigned score. For a Conformity, the score must be above 7
+2. An assessment grade which is either Conformity, Opportunity for Improvement, or Non-Conformity for the assigned score. For a Conformity, the score must be above 7
 3. A brief justification for the assigned score.
 4. A good recommendation based on the assigned score.
 
@@ -128,13 +128,21 @@ recommendation: <good recommendation in 20 words>";
                         $evidence_links_array[] = env('APP_URL') . '/storage/' . $evidence->link;
                     }
                     $evidence_link = implode(',', $evidence_links_array);
+                    if ($ans == 'Yes' && count($evidences) < 1) {
+                        $answer->score = 1;
+                        $answer->findings = "The response says 'Yes' but lacks evidence to backup the claim.";
+                        $answer->consultant_grade = 'Non-Conformity';
+                        $answer->recommendations = 'Kindly provide detailed evidence to ascertain compliance.';
+                    } else {
 
-                    $ai_response = $this->analyzeWithOpenAI($quest, $ans, $details, $evidence_link);
+                        $ai_response = $this->analyzeWithOpenAI($quest, $ans, $details, $evidence_link);
+                        $answer->score = $ai_response->score;
+                        $answer->findings = $ai_response->justification;
+                        $answer->consultant_grade = $ai_response->grade;
+                        $answer->recommendations = $ai_response->recommendation;
+                    }
 
-                    $answer->score = $ai_response->score;
-                    $answer->findings = $ai_response->justification;
-                    $answer->consultant_grade = $ai_response->grade;
-                    $answer->recommendations = $ai_response->recommendation;
+
                     $answer->is_submitted = 1;
                     $answer->save();
                 }

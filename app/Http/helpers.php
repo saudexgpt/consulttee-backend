@@ -567,8 +567,8 @@ function subdomainPublicPath($folder = null)
 
 function portalPulicPath($folder = null)
 {
-    return storage_path('app/public/' . $folder);
-    // return "/home/decompa1/public_html/storage/" . $folder;
+    // return storage_path('app/public/' . $folder);
+    return "/home/consultt/api.consulttee.com.ng/storage/" . $folder;
 }
 
 function folderSize($dir)
