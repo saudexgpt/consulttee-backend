@@ -236,4 +236,36 @@ recommendation: <good recommendation in 20 words>";
         $gap_assessment_evidence->delete();
         return response()->json([], 204);
     }
+
+    public function generativeThreatIntelligence()
+    {
+        //
+        $message = "What are the 10 latest cyber security threat intelligence feeds from reputable sources";
+        $question = "Let the responses also cover the following standards: Standards: ### ISO 27001, ISO 27017, ISO 27018 and PCI DSS ###";
+        // $answer = "Response: ### $ans, $details ###";
+        // $evidence = "Evidence: ### $evid ###";
+        $instruction = "
+Provide the responses as an array of objects in json format for easy extraction in the format below:
+
+threat: <threat_title>
+description: <description>
+scenerio: <scenerio>
+source: <source>
+precaution: <precaution>";
+
+        $content = $message . $question . $instruction;
+
+        $result = OpenAI::chat()->create([
+            'model' => 'gpt-3.5-turbo',
+            'messages' => [
+                ['role' => 'user', 'content' => $content],
+            ],
+        ]);
+
+        // response is score and justification
+        $ai_response = json_decode($result->choices[0]->message->content);
+        return response()->json(['feeds' => $ai_response], 200);
+        // print_r($result);
+    }
+
 }

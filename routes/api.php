@@ -49,7 +49,7 @@ Route::get('set-admin-role', [Controller::class, 'setAdminRole']);
 Route::get('countries', [Controller::class, 'fetchCountries']);
 Route::get('fetch-available-modules', [Controller::class, 'fetchAvailableModules']);
 Route::get('test-ai-api', [AnswersController::class, 'testAiApi']);
-
+Route::get('generative-threat-intelligence', [AnswersController::class, 'generativeThreatIntelligence']);
 
 
 // Route::get('clause-report', [ReportsController::class, 'clientProjectManagementClauseReport']);
