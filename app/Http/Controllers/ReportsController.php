@@ -91,10 +91,15 @@ class ReportsController extends Controller
                 // })
                 // ->where('status', 'Closed')
                 ->count();
+            $associated_risks = [];
+            $risk_count = Answer::where($condition)
+                ->whereIn('project_id', $projectIds)
+                ->where('associated_risks', '!=', NULL)
+                ->count();
             $all_questions = Answer::where($condition)->whereIn('project_id', $projectIds)->count();
             $exceptions = Exception::where($condition)->whereIn('project_id', $projectIds)->count();
 
-            $my_projects = $this->getUser()->projects()->where($condition)->groupBy('client_id')->select(\DB::raw('AVG(progress) as project_progress'))->first();
+            $my_projects = $this->getUser()->projects()->where($condition)->select(\DB::raw('AVG(progress) as project_progress'))->first();
             $project_progress = $my_projects->project_progress;
         } else {
             $project = Project::find($project_id);
@@ -118,12 +123,17 @@ class ReportsController extends Controller
                 // })
                 // ->where('status', 'Closed')
                 ->count();
+            $risks = Answer::with('clause', 'standard')->where($condition)
+                ->where('associated_risks', '!=', NULL)
+                ->get();
+            $risk_count = $risks->count();
+            $associated_risks = $risks->groupBy('clause_id');
             $all_questions = Answer::where($condition)->count();
             $exceptions = Exception::where($condition)->count();
         }
 
 
-        return response()->json(compact('uploaded_documents', 'expected_documents', 'answered_questions', 'all_questions', 'exceptions', 'project_progress'), 200);
+        return response()->json(compact('uploaded_documents', 'expected_documents', 'answered_questions', 'all_questions', 'exceptions', 'project_progress', 'associated_risks', 'risk_count'), 200);
     }
 
     public function clientProjectAssessmentSummaryReport(Request $request)
@@ -150,6 +160,33 @@ class ReportsController extends Controller
         }
         return response()->json(compact('reports'), 200);
     }
+    public function associatedRiskAnalysis(Request $request)
+    {
+        $client_id = $request->client_id;
+        $project_id = $request->project_id;
+        if ($project_id == 'all') {
+            $projectIds = $this->getMyProjects($client_id)->pluck('id');
+            $reports = Answer::join('clauses', 'clauses.id', '=', 'answers.clause_id')
+                ->where(['client_id' => $client_id])
+                ->whereIn('project_id', $projectIds)
+                ->where('associated_risks', '!=', NULL)
+                // ->where('is_submitted', 1)
+                ->orderBy('clauses.sort_by')
+                ->select(\DB::raw('COUNT(CASE WHEN is_risk_resolved = 0 THEN answers.id END ) as pending'), \DB::raw('COUNT(CASE WHEN is_risk_resolved = 1 THEN answers.id END ) as resolved'))
+                ->first();
+        } else {
+
+            $reports = Answer::join('clauses', 'clauses.id', '=', 'answers.clause_id')
+                ->where(['client_id' => $client_id, 'project_id' => $project_id])
+                // ->where('is_submitted', 1)
+                ->where('associated_risks', '!=', NULL)
+                ->orderBy('clauses.sort_by')
+                ->select(\DB::raw('COUNT(CASE WHEN is_risk_resolved = 0 THEN answers.id END ) as pending'), \DB::raw('COUNT(CASE WHEN is_risk_resolved = 1 THEN answers.id END ) as resolved'))
+                ->first();
+        }
+        return response()->json(compact('reports'), 200);
+    }
+
     public function clientProjectManagementClauseReport(Request $request)
     {
         $client_id = $request->client_id;

@@ -353,6 +353,8 @@ Route::group(['middleware' => 'auth:sanctum'], function () {
         Route::get('clause-report', [ReportsController::class, 'clientProjectManagementClauseReport']);
         Route::get('completion-report', [ReportsController::class, 'clientProjectRequirementCompletionReport']);
         Route::get('summary-report', [ReportsController::class, 'clientProjectAssessmentSummaryReport']);
+        Route::get('associated-risk-analysis', [ReportsController::class, 'associatedRiskAnalysis']);
+
         Route::get('soa-summary', [ReportsController::class, 'soaSummary']);
         Route::get('risk-assessment-summary', [ReportsController::class, 'riskAssessmentSummary']);
         Route::get('fetch-project-answers', [ReportsController::class, 'fetchProjectAnswers']);

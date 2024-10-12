@@ -6,6 +6,7 @@ use App\Models\Answer;
 use App\Models\Clause;
 use App\Models\Client;
 use App\Models\GapAssessmentEvidence;
+use App\Models\GeneralRiskLibrary;
 use App\Models\Project;
 use App\Models\Question;
 use Illuminate\Http\Request;
@@ -79,13 +80,14 @@ Based on the provided information, generate:
 2. An assessment grade which is either Conformity, Opportunity for Improvement, or Non-Conformity for the assigned score. For a Conformity, the score must be above 7
 3. A brief justification for the assigned score.
 4. A good recommendation based on the assigned score.
-
+5. the associated risks if the assessment grade is not Conformity.
 Provide the response in a json format for easy extraction in the format below;
 
 score: {range of 1 to 10}
 grade: <grade>
 justification: <brief justification in 30 to 50 words>
-recommendation: <good recommendation in 20 words>";
+recommendation: <good recommendation in 20 words>
+associated_risks: <state the associated_risks in 10 words>";
 
         $content = $message . $question . $answer . $evidence . $instruction;
 
@@ -128,18 +130,29 @@ recommendation: <good recommendation in 20 words>";
                         $evidence_links_array[] = env('APP_URL') . '/storage/' . $evidence->link;
                     }
                     $evidence_link = implode(',', $evidence_links_array);
-                    if ($ans == 'Yes' && count($evidences) < 1) {
-                        $answer->score = 1;
-                        $answer->findings = "The response says 'Yes' but lacks evidence to backup the claim.";
-                        $answer->consultant_grade = 'Non-Conformity';
-                        $answer->recommendations = 'Kindly provide detailed evidence to ascertain compliance.';
-                    } else {
+                    if ($ans == 'NO') {
 
                         $ai_response = $this->analyzeWithOpenAI($quest, $ans, $details, $evidence_link);
                         $answer->score = $ai_response->score;
                         $answer->findings = $ai_response->justification;
                         $answer->consultant_grade = $ai_response->grade;
                         $answer->recommendations = $ai_response->recommendation;
+                        $answer->associated_risks = $ai_response->associated_risks;
+                    } else if (count($evidences) > 0) {
+
+                        $ai_response = $this->analyzeWithOpenAI($quest, $ans, $details, $evidence_link);
+                        $answer->score = $ai_response->score;
+                        $answer->findings = $ai_response->justification;
+                        $answer->consultant_grade = $ai_response->grade;
+                        $answer->recommendations = $ai_response->recommendation;
+                        $answer->associated_risks = $ai_response->associated_risks;
+                    } else {
+
+                        $answer->score = 1;
+                        $answer->findings = "The response says 'Yes' but lacks evidence to backup the claim.";
+                        $answer->consultant_grade = 'Non-Conformity';
+                        $answer->recommendations = 'Kindly provide detailed evidence to ascertain compliance.';
+
                     }
 
 
@@ -247,11 +260,10 @@ recommendation: <good recommendation in 20 words>";
         $instruction = "
 Provide the responses as an array of objects in json format for easy extraction in the format below:
 
-threat: <threat_title>
-description: <description>
-scenerio: <scenerio>
+threat: <threat>
+vulnerabilities: <vulnerabilities>
 source: <source>
-precaution: <precaution>";
+solutions: <solutions>";
 
         $content = $message . $question . $instruction;
 
@@ -263,8 +275,20 @@ precaution: <precaution>";
         ]);
 
         // response is score and justification
-        $ai_response = json_decode($result->choices[0]->message->content);
-        return response()->json(['feeds' => $ai_response], 200);
+        $feeds = json_decode($result->choices[0]->message->content);
+        foreach ($feeds as $feed) {
+            $threat = $feed->threat;
+            $threat_library = GeneralRiskLibrary::where('threats', 'LIKE', $threat)->first();
+            if (!$threat_library) {
+                $threat_library = new GeneralRiskLibrary();
+            }
+            $threat_library->threats = $threat;
+            $threat_library->vulnerabilities = $feed->vulnerabilities;
+            $threat_library->source = $feed->source;
+            $threat_library->solutions = $feed->solutions;
+            $threat_library->save();
+        }
+        return response()->json(compact('feeds'), 200);
         // print_r($result);
     }
 
