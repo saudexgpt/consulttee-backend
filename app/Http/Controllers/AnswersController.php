@@ -146,6 +146,9 @@ associated_risks: <state the associated_risks in 10 words>";
                         $answer->consultant_grade = $ai_response->grade;
                         $answer->recommendations = $ai_response->recommendation;
                         $answer->associated_risks = $ai_response->associated_risks;
+                        if ($ai_response->grade == 'Conformity') {
+                            $answer->is_risk_resolved = 1;
+                        }
                     } else {
 
                         $answer->score = 1;
