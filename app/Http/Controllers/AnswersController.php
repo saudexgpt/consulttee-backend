@@ -279,19 +279,22 @@ solutions: <solutions>";
 
         // response is score and justification
         $feeds = json_decode($result->choices[0]->message->content);
-        foreach ($feeds as $feed) {
-            $threat = $feed->threat;
-            $threat_library = GeneralRiskLibrary::where('threats', 'LIKE', $threat)->first();
-            if (!$threat_library) {
-                $threat_library = new GeneralRiskLibrary();
+        if ($feeds) {
+
+            foreach ($feeds as $feed) {
+                $threat = $feed->threat;
+                $threat_library = GeneralRiskLibrary::where('threats', 'LIKE', $threat)->first();
+                if (!$threat_library) {
+                    $threat_library = new GeneralRiskLibrary();
+                }
+                $threat_library->threats = $threat;
+                $threat_library->vulnerabilities = $feed->vulnerabilities;
+                $threat_library->source = $feed->source;
+                $threat_library->solutions = $feed->solutions;
+                $threat_library->save();
             }
-            $threat_library->threats = $threat;
-            $threat_library->vulnerabilities = $feed->vulnerabilities;
-            $threat_library->source = $feed->source;
-            $threat_library->solutions = $feed->solutions;
-            $threat_library->save();
+            return response()->json(compact('feeds'), 200);
         }
-        return response()->json(compact('feeds'), 200);
         // print_r($result);
     }
 
