@@ -120,8 +120,8 @@ class ClientsController extends Controller
         $user->password = $password;
         $user->save();
         //email will be sent later containing login credentials
-        SendQueuedConfirmationEmailJob::dispatch($user, $password);
-        // Mail::to($user)->send(new ConfirmNewRegistration($user, $password));
+        // SendQueuedConfirmationEmailJob::dispatch($user, $password);
+        Mail::to($user)->send(new ConfirmNewRegistration($user, $password));
         // \Illuminate\Support\Facades\Artisan::call('queue:work --queue=high,default');
         return response()->json([], 204);
     }
